@@ -50,7 +50,7 @@ class ProjectQuerySet(models.QuerySet):
 
     def groups(self):
         groups = {"active": [], "inactive": [], "any": bool(self)}
-        cutoff = localtime() - dt.timedelta(days=30)
+        cutoff = localtime() - dt.timedelta(days=60)
         localtime()
         for obj in self:
             groups["active" if obj.updated_at > cutoff else "inactive"].append(obj)

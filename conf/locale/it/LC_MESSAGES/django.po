@@ -64,6 +64,7 @@ msgid "Verified user data couldn't be found. Please try again."
 msgstr ""
 
 #: accounts/views.py
+#, python-brace-format
 msgid "Welcome, {}!"
 msgstr ""
 
@@ -419,13 +420,32 @@ msgstr ""
 msgid "Export messages as CSV"
 msgstr ""
 
-#: app/templates/projects/projects.html
-msgid "Active projects"
+#: app/templates/projects/project.html app/templates/projects/projects.html
+msgid "RSS feed"
 msgstr ""
 
 #: app/templates/projects/projects.html
-msgid "Inactive projects"
+msgid "Projects with recent activity"
 msgstr ""
+
+#: app/templates/projects/projects.html
+msgid "Other projects"
+msgstr ""
+
+#: projects/forms.py
+msgid "Variables"
+msgstr ""
+
+#: projects/forms.py
+#, python-brace-format
+msgid "Missing variables: {vars}"
+msgstr ""
+
+#~ msgid "Active projects"
+#~ msgstr ""
+
+#~ msgid "Inactive projects"
+#~ msgstr ""
 
 #~ msgid "Your projects"
 #~ msgstr ""

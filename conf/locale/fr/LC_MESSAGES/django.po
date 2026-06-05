@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-08-09 14:25+0200\n"
-"PO-Revision-Date: 2026-03-11 10:56+0100\n"
+"PO-Revision-Date: 2026-06-05 17:26+0200\n"
 "Last-Translator: Anonymous User <mk@feinheit.ch>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -65,6 +65,7 @@ msgid "Verified user data couldn't be found. Please try again."
 msgstr "Les données de l'utilisateur vérifié n'ont pas été trouvées. Veuillez réessayer."
 
 #: accounts/views.py
+#, python-brace-format
 msgid "Welcome, {}!"
 msgstr "Bienvenue, {} !"
 
@@ -420,15 +421,33 @@ msgstr "Exportation"
 msgid "Export messages as CSV"
 msgstr "Exporter les entrées au format CSV"
 
-#: app/templates/projects/projects.html
-#| msgid "created project"
-msgid "Active projects"
-msgstr "Projets en cours"
+#: app/templates/projects/project.html app/templates/projects/projects.html
+msgid "RSS feed"
+msgstr "Flux RSS"
 
 #: app/templates/projects/projects.html
-#| msgid "created project"
-msgid "Inactive projects"
-msgstr "Projets inactifs"
+msgid "Projects with recent activity"
+msgstr "Projets ayant fait l'objet d'une activité récente"
+
+#: app/templates/projects/projects.html
+#| msgid "Active projects"
+msgid "Other projects"
+msgstr "Autres projets"
+
+#: projects/forms.py
+msgid "Variables"
+msgstr "Variables"
+
+#: projects/forms.py
+#, python-brace-format
+msgid "Missing variables: {vars}"
+msgstr "Variables manquantes : {vars}"
+
+#~ msgid "Active projects"
+#~ msgstr "Projets en cours"
+
+#~ msgid "Inactive projects"
+#~ msgstr "Projets inactifs"
 
 #~ msgid "Your projects"
 #~ msgstr "Vos projets"

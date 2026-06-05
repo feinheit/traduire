@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2024-07-04 15:06+0200\n"
-"PO-Revision-Date: 2026-03-11 10:55+0100\n"
+"PO-Revision-Date: 2026-06-05 17:26+0200\n"
 "Last-Translator: Anonymous User <mk@feinheit.ch>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "Language: \n"
@@ -263,6 +263,7 @@ msgid "The user with email address %s is inactive."
 msgstr "Der Benutzer mit der E-Mail Adresse %s ist inaktiv."
 
 #: accounts/views.py
+#, python-brace-format
 msgid "Welcome, {}!"
 msgstr "Willkommen, {}!"
 
@@ -420,15 +421,33 @@ msgstr "Exportieren"
 msgid "Export messages as CSV"
 msgstr "Einträge als CSV exportieren"
 
-#: app/templates/projects/projects.html
-#| msgid "created project"
-msgid "Active projects"
-msgstr "Aktive Projekte"
+#: app/templates/projects/project.html app/templates/projects/projects.html
+msgid "RSS feed"
+msgstr "RSS-Feed"
 
 #: app/templates/projects/projects.html
-#| msgid "created project"
-msgid "Inactive projects"
-msgstr "Inaktive Projekte"
+msgid "Projects with recent activity"
+msgstr "Projekte mit aktueller Aktivität"
+
+#: app/templates/projects/projects.html
+#| msgid "Active projects"
+msgid "Other projects"
+msgstr "Andere Projekte"
+
+#: projects/forms.py
+msgid "Variables"
+msgstr "Variabeln"
+
+#: projects/forms.py
+#, python-brace-format
+msgid "Missing variables: {vars}"
+msgstr "Fehlende Variabeln: {vars}"
+
+#~ msgid "Active projects"
+#~ msgstr "Aktive Projekte"
+
+#~ msgid "Inactive projects"
+#~ msgstr "Inaktive Projekte"
 
 #~ msgid "Your projects"
 #~ msgstr "Deine Projekte"
