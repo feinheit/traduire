@@ -1,0 +1,4 @@
+[tools]
+node = "25"
+prettier = "3"
+yarn = "4"
