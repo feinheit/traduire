@@ -28,12 +28,12 @@ def logout(request):
 
 @never_cache
 @set_next_cookie
-def google_sso(request):
+def sso(request, sso_client_class=GoogleOAuth2Client):
     auth_params = request.GET.dict()
     auth_params.setdefault("login_hint", request.COOKIES.get("login_hint", ""))
     if request.GET.get("select"):
-        auth_params["prompt"] = "consent select_account"
-    client = GoogleOAuth2Client(request, authorization_params=auth_params)
+        auth_params["prompt"] = sso_client_class.prompt
+    client = sso_client_class(request, authorization_params=auth_params)
 
     if not request.GET.get("code"):
         return redirect(client.get_authentication_url())

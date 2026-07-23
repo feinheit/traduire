@@ -19,6 +19,7 @@
             <a href="{% url 'register' %}">{% translate "Register" %}</a>
             <a href="{% url 'password_reset' %}">{% translate "Reset password" %}</a>
             <a href="{% url 'google-sso' %}?next={{ request.GET.next|default:"/" }}{% if request.GET.error %}&amp;select=1{% endif %}">{% translate 'Login with Google' %}</a>
+            <a href="{% url 'microsoft-sso' %}?next={{ request.GET.next|default:"/" }}{% if request.GET.error %}&amp;select=1{% endif %}">{% translate 'Login with Microsoft' %}</a>
 
           </div>
         </form>
