@@ -136,6 +136,11 @@ class EntriesForm(forms.Form):
             if not msgid_with_context:
                 continue
 
+            # Browsers normalize newlines in form submissions to CRLF, but PO
+            # file msgids use LF. Undo that so the catalog lookup below matches
+            # entries whose msgid contains an embedded newline (issue #13).
+            msgid_with_context = msgid_with_context.replace("\r\n", "\n")
+
             # Better be safe than sorry -- do not modify the entries in
             # self.entries, find the entry in the current version of the pofile
             # instead.

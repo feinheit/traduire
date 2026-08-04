@@ -583,6 +583,37 @@ msgstr[1] "Blab %(count)s"
         c.refresh_from_db()
         self.assertIn("Bonjour avec saut de ligne", c.pofile)
 
+    def test_msgid_with_crlf_from_browser_is_translatable(self):
+        """Browsers normalize newlines to CRLF in form submissions. When the
+        catalog msgid contains an embedded LF, the round-tripped hidden msgid
+        arrives with CRLF and must still match the catalog entry — otherwise
+        the entry is silently skipped (issue #13)."""
+        superuser = User.objects.create_superuser("admin@example.com", "admin")
+        su_client = Client()
+        su_client.force_login(superuser)
+
+        p = Project.objects.create(name="crlf", slug="crlf")
+        c = p.catalogs.create(
+            language_code="fr",
+            domain="django",
+            pofile='msgid ""\n"\\nHello with leading newline"\nmsgstr ""\n',
+        )
+
+        r = su_client.post(
+            c.get_absolute_url(),
+            {
+                "msgid_0": "\r\nHello with leading newline",
+                "msgstr_0": "\r\nBonjour avec saut de ligne",
+            },
+            headers={"accept-language": "en"},
+        )
+        self.assertRedirects(r, c.get_absolute_url() + "?start=0")
+
+        c.refresh_from_db()
+        self.assertIn("Bonjour avec saut de ligne", c.pofile)
+        # The stored msgstr must keep LF, not CRLF.
+        self.assertNotIn("\r", c.pofile)
+
     def test_valid_translation_with_variables_saves(self):
         superuser = User.objects.create_superuser("admin@example.com", "admin")
         su_client = Client()
