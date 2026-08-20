@@ -7,15 +7,13 @@ urlpatterns = [
     path("logout/", views.logout, name="logout"),
     path(
         "google-sso/",
-        views.sso,
+        views.google_sso,
         name="google-sso",
-        kwargs={"sso_client_class": "GoogleOAuth2Client"},
     ),
     path(
         "microsoft-sso/",
-        views.sso,
+        views.microsoft_sso,
         name="microsoft-sso",
-        kwargs={"sso_client_class": "MicrosoftOAuth2Client"},
     ),
     path("register/", views.register, name="register"),
     path("register/<str:code>/", views.register, name="email_registration_confirm"),

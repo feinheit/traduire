@@ -1,4 +1,4 @@
-{% load i18n static webpack_assets %}
+{% load i18n rspack_assets static %}
 <!DOCTYPE html>
 <html lang="{{ LANGUAGE_CODE }}">
 <head>
@@ -7,7 +7,7 @@
 
   <link rel="icon" type="image/png" href="/favicon.png">
   <meta name="theme-color" content="#282830">
-  {% if not TESTING %}{% webpack_assets 'main' %}{% endif %}
+  {% if not TESTING %}{% rspack_assets 'main' %}{% endif %}
 
   <title>{% block title %}Traduire{% endblock %}</title>
 </head>

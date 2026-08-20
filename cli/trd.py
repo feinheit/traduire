@@ -1,10 +1,10 @@
 import sys
+import tomllib
 from pathlib import Path
 from urllib.parse import urljoin
 
 import click
 import requests
-import tomllib
 
 
 CLI_API = "1"  # Bump this when changing the API in incompatible ways

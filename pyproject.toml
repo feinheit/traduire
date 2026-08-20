@@ -96,16 +96,16 @@ lint.isort.combine-as-imports = true
 lint.isort.lines-after-imports = 2
 lint.mccabe.max-complexity = 15
 
+[tool.pyright]
+venv = "."
+venvPath = ".venv"
+
 [tool.coverage]
-run.branch = true
 run.omit = [
   "*migrate*",
   "*migrations*",
   "*venv*",
 ]
-report.show_missing = true
+run.branch = true
 report.skip_covered = true
-
-[tool.pyright]
-venvPath = ".venv"
-venv = "."
+report.show_missing = true

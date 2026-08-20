@@ -1,4 +1,6 @@
 from authlib.email import decode
+from authlib.google import GoogleOAuth2Client
+from authlib.microsoft import MicrosoftOAuth2Client
 from authlib.views import (
     REDIRECT_COOKIE_NAME,
     EmailRegistrationForm,
@@ -27,9 +29,17 @@ def logout(request):
 
 @never_cache
 @set_next_cookie
-def sso(request, sso_client_class):
-    if isinstance(sso_client_class, str):
-        sso_client_class = globals()[sso_client_class]
+def google_sso(request):
+    return _sso(request, GoogleOAuth2Client)
+
+
+@never_cache
+@set_next_cookie
+def microsoft_sso(request):
+    return _sso(request, MicrosoftOAuth2Client)
+
+
+def _sso(request, sso_client_class):
     auth_params = request.GET.dict()
     auth_params.setdefault("login_hint", request.COOKIES.get("login_hint", ""))
     if request.GET.get("select"):
