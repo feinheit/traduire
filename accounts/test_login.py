@@ -14,6 +14,7 @@ def messages(response):
 class FakeFlow:
     EMAIL = "user@example.com"
     RAISE_EXCEPTION = False
+    prompt = "consent select_account"
 
     def __init__(self, *args, **kwargs):
         self.args = args
@@ -25,11 +26,16 @@ class FakeFlow:
 
     def get_user_data(self):
         if self.RAISE_EXCEPTION:
-            raise Exception("Email not verified")
+            raise Exception("Email not verified")  # noqa: TRY002
         return {"email": self.EMAIL}
 
 
+class MicrosoftFakeFlow(FakeFlow):
+    prompt = "select_account"
+
+
 views.GoogleOAuth2Client = FakeFlow
+views.MicrosoftOAuth2Client = MicrosoftFakeFlow
 
 
 @override_settings(STAFF_EMAIL_DOMAINS=["example.com"])
@@ -128,6 +134,68 @@ class LoginTestCase(TestCase):
         FakeFlow.EMAIL = "user@example.com"
         response = client.get(
             "/accounts/google-sso/?code=x", headers={"accept-language": "en"}
+        )
+        self.assertRedirects(response, "/accounts/login/?error=1")
+        self.assertEqual(
+            messages(response),
+            ["The user with email address user@example.com is inactive."],
+        )
+
+    def test_microsoft_server_flow(self):
+        """Exercise the OAuth2 webserver flow implementation for Microsoft SSO"""
+        MicrosoftFakeFlow.EMAIL = "user@example.org"
+        MicrosoftFakeFlow.RAISE_EXCEPTION = False
+
+        client = Client()
+
+        response = client.get("/accounts/microsoft-sso/")
+        self.assertRedirects(
+            response, "http://example.com/auth/?prompt=", fetch_redirect_response=False
+        )
+
+        response = client.get("/accounts/microsoft-sso/?select=1")
+        self.assertRedirects(
+            response,
+            "http://example.com/auth/?prompt=select_account",
+            fetch_redirect_response=False,
+        )
+
+        MicrosoftFakeFlow.EMAIL = "user@example.com"
+        response = client.get(
+            "/accounts/microsoft-sso/?code=x", headers={"accept-language": "en"}
+        )
+        self.assertRedirects(response, "/accounts/create/")
+
+        response = client.post(
+            "/accounts/create/",
+            {
+                "full_name": "Blub Blubber",
+                "new_password1": "blubblubblubblub123412341234",
+                "new_password2": "blubblubblubblub123412341234",
+            },
+            headers={"accept-language": "en"},
+        )
+        self.assertRedirects(response, "/", fetch_redirect_response=False)
+
+        response = client.get("/")
+        self.assertEqual(messages(response), ["Welcome, Blub Blubber!"])
+        self.assertEqual(
+            client.cookies.get("login_hint").value, MicrosoftFakeFlow.EMAIL
+        )
+
+        client = Client()
+        response = client.get("/accounts/microsoft-sso/?code=x")
+        self.assertRedirects(response, "/")
+        self.assertEqual(messages(response), [])
+        self.assertEqual(
+            client.cookies.get("login_hint").value, MicrosoftFakeFlow.EMAIL
+        )
+
+        # Disabled user
+        User.objects.update(is_active=False)
+        client = Client()
+        response = client.get(
+            "/accounts/microsoft-sso/?code=x", headers={"accept-language": "en"}
         )
         self.assertRedirects(response, "/accounts/login/?error=1")
         self.assertEqual(
