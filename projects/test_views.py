@@ -417,7 +417,7 @@ msgstr[1] "Blab %(count)s"
 
         self.assertContains(r, '<td class="field-explicit_users">-</td>')
         self.assertContains(
-            r, '<td class="field-explicit_users"> &lt;user@example.com&gt;</td>'
+            r, '<td class="field-explicit_users">&lt;user@example.com&gt;</td>'
         )
 
     async def test_suggest(self):
