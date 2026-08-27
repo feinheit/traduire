@@ -1,15 +1,16 @@
-FROM --platform=linux/amd64 python:3.12 as backend
-# RUN apt-get update && apt-get install -y imagemagick poppler-utils gdal-bin && rm -rf /var/lib/apt/ /var/cache/apt/
+# See https://docs.astral.sh/uv/guides/integration/docker/#available-images
+FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:debian as backend
 WORKDIR /src
-ENV PYTHONUNBUFFERED 1
-ENV VIRTUAL_ENV=/usr/local
-ADD requirements.txt .
-RUN pip install uv && uv pip install -r requirements.txt --system
+ENV PYTHONUNBUFFERED=1 \
+    UV_PYTHON_INSTALL_DIR=/opt/uv \
+    UV_NO_DEV=1
+ADD pyproject.toml uv.lock .
+RUN --mount=type=cache,id=uv-cache,target=/root/.cache/uv uv sync
 ADD . /src
 COPY conf/_env .env
-RUN python manage.py collectstatic --noinput && rm .env
-RUN python -m blacknoise.compress static
-RUN useradd -U deploy -m
+RUN chmod -R a+rX /src  # Ensure all files are readable by deploy user while keeping root ownership
+RUN uv run python manage.py collectstatic --noinput && rm .env
+RUN useradd -U -m deploy
 USER deploy
 EXPOSE 8000
-CMD ["python", "-m", "granian", "--interface", "asgi", "asgi:application", "--workers", "2", "--host", "0.0.0.0", "--port", "8000", "--respawn-failed-workers"]
+CMD ["uv", "run", "granian", "--interface", "asginl", "asgi:application", "--workers", "2", "--host", "0.0.0.0", "--port", "8000", "--respawn-failed-workers", "--static-path-mount", "/src/static/", "--static-path-expires", "720d", "--no-ws"]

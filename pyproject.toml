@@ -1,5 +1,33 @@
+[project]
+name = "traduire"
+version = "0.0.1"
+requires-python = ">=3.14,<3.15"
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "django>=6.1",
+  "django-authlib>=0.18",
+  "django-canonical-domain>=0.11",
+  "django-debug-toolbar>=7.1.1",
+  "django-ratelimit>=4.1",
+  "granian>=2.8.2",
+  "httpx2>=2.12",
+  "polib>=1.2",
+  "psycopg[binary]>=3.3.4",
+  "sentry-sdk<3",
+  "speckenv>=6.2",
+  "time-machine>=3.5",
+]
+
+[dependency-groups]
+dev = [
+  "coverage>=7.15.4",
+]
+
 [tool.ruff]
-target-version = "py313"
+target-version = "py314"
 preview = true
 fix = true
 show-fixes = true

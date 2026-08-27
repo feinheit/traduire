@@ -1,6 +1,6 @@
 import re
 
-import httpx
+import httpx2
 
 
 class TranslationError(Exception):
@@ -68,7 +68,7 @@ async def translate_by_deepl(text, to_language, auth_key):
     protected, placeholders = _protect_variables(text)
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx2.AsyncClient() as client:
             r = await client.post(
                 f"{endpoint}/v2/translate",
                 headers={"Authorization": f"DeepL-Auth-Key {auth_key}"},
@@ -80,7 +80,7 @@ async def translate_by_deepl(text, to_language, auth_key):
                 },
                 timeout=5,
             )
-    except httpx.TimeoutException as exc:
+    except httpx2.TimeoutException as exc:
         raise TranslationError(
             "The Deepl request timed out. Please try again later."
         ) from exc
