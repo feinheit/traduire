@@ -10,7 +10,7 @@ labelling fields and when deciding which msgid a form translates.
 import gettext
 import re
 
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, ngettext
 
 
 # The gettext default (and by far the most common) rule: form 0 for n == 1.
@@ -68,6 +68,52 @@ def singular_form_index(plural_forms):
     """
     nplurals, _rule = parse_plural_forms(plural_forms)
     return None if nplurals == 1 else plural_form_index(plural_forms, 1)
+
+
+def form_indexes(entry, plural_forms):
+    """Return the ``msgstr[]`` indexes an entry should offer for translation.
+
+    Catalogs sometimes contain fewer forms than the language needs, e.g. after
+    a plural rule has been changed; those forms are offered for translation
+    too. Forms beyond what the header asks for are kept as well -- dropping
+    existing translations would be worse than showing one field too many.
+    """
+    nplurals, _rule = parse_plural_forms(plural_forms)
+    return sorted(set(range(nplurals)) | set(entry.msgstr_plural))
+
+
+def source_rows(entry, plural_forms, indexes):
+    """Return the entry's source strings as ``{"label", "msgid"}`` rows.
+
+    The label says which of the fields on the other side of the table
+    translates the string, since that is anything but obvious for plurals.
+    """
+    if not entry.msgid_plural:
+        return [{"label": "", "msgid": entry.msgid}]
+
+    singular = singular_form_index(plural_forms)
+    if singular not in indexes:
+        singular = None
+    plural_indexes = [index for index in indexes if index != singular]
+
+    return [
+        {
+            "label": _("Singular (plural form {index})").format(index=singular)
+            if singular is not None
+            else _("Singular"),
+            "msgid": entry.msgid,
+        },
+        {
+            "label": ngettext(
+                "Plural (plural form {indexes})",
+                "Plural (plural forms {indexes})",
+                len(plural_indexes),
+            ).format(indexes=", ".join(str(index) for index in plural_indexes))
+            if plural_indexes
+            else _("Plural"),
+            "msgid": entry.msgid_plural,
+        },
+    ]
 
 
 def source_for_form(entry, index, plural_forms):

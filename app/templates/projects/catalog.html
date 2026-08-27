@@ -54,12 +54,9 @@
 
         <small>{% translate 'Occurrences' %}: {% for path, lineno in entry.entry.occurrences %}{{ path }}{% if lineno %}:{{ lineno }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</small><br>
 
-        {% if entry.entry.msgid_plural %}
-          {{ entry.entry.msgid }}<br>
-          {{ entry.entry.msgid_plural }}
-        {% else %}
-          {{ entry.entry.msgid }}
-        {% endif %}
+        {% for source in entry.sources %}
+          {% if source.label %}<small>{{ source.label }}:</small> {% endif %}{{ source.msgid }}{% if not forloop.last %}<br>{% endif %}
+        {% endfor %}
       </td>
       <td class="entry__msgstr flow">
         {% for field in entry.msgstr %}

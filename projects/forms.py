@@ -68,9 +68,12 @@ class EntriesForm(forms.Form):
                 required=False,
             )
 
+            indexes = self._plural_indexes(entry)
+
             self.entry_rows.append({
                 "entry": entry,
                 "msgid": self[f"msgid_{index}"],
+                "sources": plurals.source_rows(entry, self.plural_forms, indexes),
                 "msgstr": [],
                 "fuzzy": self[f"fuzzy_{index}"],
             })
@@ -79,15 +82,13 @@ class EntriesForm(forms.Form):
                 # msgstr[n] is the n-th plural form of the target language, not
                 # the translation for n items -- label the fields with the
                 # counts the catalog's plural rule actually maps to each form.
-                labels = plurals.plural_form_labels(
-                    self.plural_forms, sorted(entry.msgstr_plural)
-                )
-                for count, msgstr in sorted(entry.msgstr_plural.items()):
+                labels = plurals.plural_form_labels(self.plural_forms, indexes)
+                for count in indexes:
                     name = f"msgstr_{index}:{count}"
                     self.fields[name] = forms.CharField(
                         label=labels[count],
                         widget=forms.Textarea(attrs={"rows": 3}),
-                        initial=msgstr,
+                        initial=entry.msgstr_plural.get(count, ""),
                         required=False,
                         strip=False,
                         help_text=_help_text(
@@ -108,11 +109,16 @@ class EntriesForm(forms.Form):
                 )
                 self.entry_rows[-1]["msgstr"].append(self[name])
 
+    def _plural_indexes(self, entry):
+        if not entry.msgid_plural:
+            return []
+        return plurals.form_indexes(entry, self.plural_forms)
+
     def clean(self):
         cleaned = super().clean()
         for index, entry in enumerate(self.entries):
             if entry.msgid_plural:
-                for count in entry.msgstr_plural:
+                for count in self._plural_indexes(entry):
                     field_name = f"msgstr_{index}:{count}"
                     value = cleaned.get(field_name, "")
                     if value:
@@ -162,11 +168,15 @@ class EntriesForm(forms.Form):
                 if entry.msgid_with_context == msgid_with_context:
                     old = copy.deepcopy(entry)
                     if entry.msgid_plural:
-                        for count in entry.msgstr_plural:
-                            entry.msgstr_plural[count] = translators.fix_nls(
-                                plurals.source_for_form(entry, count, plural_forms),
-                                self.cleaned_data.get(f"msgstr_{index}:{count}", ""),
-                            )
+                        for count in plurals.form_indexes(entry, plural_forms):
+                            value = self.cleaned_data.get(f"msgstr_{index}:{count}", "")
+                            # Adding empty forms which the catalog does not
+                            # contain would count as an update on every save.
+                            if value or count in entry.msgstr_plural:
+                                entry.msgstr_plural[count] = translators.fix_nls(
+                                    plurals.source_for_form(entry, count, plural_forms),
+                                    value,
+                                )
                     else:
                         entry.msgstr = translators.fix_nls(entry.msgid, msgstr)
                     if fuzzy and not entry.fuzzy:

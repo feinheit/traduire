@@ -15,6 +15,7 @@ from projects.plurals import (
     plural_form_labels,
     singular_form_index,
     source_for_form,
+    source_rows,
 )
 from projects.translators import (
     TranslationError,
@@ -794,6 +795,141 @@ msgstr[1] ""
         c.refresh_from_db()
         self.assertIn('msgstr[0] "Ein Studi"', c.pofile)
         self.assertIn('msgstr[1] "%(count)s Studis"', c.pofile)
+
+    RUSSIAN_POFILE = """\
+msgid ""
+msgstr ""
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\\n"
+
+#, python-format
+msgid "One student"
+msgid_plural "%(count)s students"
+msgstr[0] "Один студент"
+msgstr[1] "%(count)s студента"
+"""
+
+    def russian_catalog(self):
+        p = Project.objects.create(name="ru", slug="ru")
+        return p.catalogs.create(
+            language_code="ru",
+            domain="django",
+            pofile=self.RUSSIAN_POFILE,
+        )
+
+    def test_missing_plural_forms_are_offered_for_translation(self):
+        """The entry only has two of the three forms Russian needs."""
+        superuser = User.objects.create_superuser("admin@example.com", "admin")
+        su_client = Client()
+        su_client.force_login(superuser)
+
+        c = self.russian_catalog()
+
+        r = su_client.get(c.get_absolute_url(), headers={"accept-language": "en"})
+        self.assertContains(r, 'name="msgstr_0:0"')
+        self.assertContains(r, 'name="msgstr_0:1"')
+        self.assertContains(r, 'name="msgstr_0:2"')
+        self.assertContains(r, "Plural form 2 (n = 0, 5, 6 and so on)")
+
+        r = su_client.post(
+            c.get_absolute_url(),
+            {
+                "msgid_0": "One student",
+                "msgstr_0:0": "Один студент",
+                "msgstr_0:1": "%(count)s студента",
+                "msgstr_0:2": "%(count)s студентов",
+            },
+            headers={"accept-language": "en"},
+        )
+        self.assertRedirects(r, c.get_absolute_url() + "?start=0")
+
+        c.refresh_from_db()
+        self.assertIn('msgstr[2] "%(count)s студентов"', c.pofile)
+
+    def test_missing_plural_forms_are_not_added_empty(self):
+        """Saving an untouched entry must not add the missing form."""
+        superuser = User.objects.create_superuser("admin@example.com", "admin")
+        su_client = Client()
+        su_client.force_login(superuser)
+
+        c = self.russian_catalog()
+
+        r = su_client.post(
+            c.get_absolute_url(),
+            {
+                "msgid_0": "One student",
+                "msgstr_0:0": "Один студент",
+                "msgstr_0:1": "%(count)s студента",
+                "msgstr_0:2": "",
+            },
+            headers={"accept-language": "en"},
+        )
+        self.assertEqual(messages(r), ["No changes detected."])
+
+        c.refresh_from_db()
+        self.assertNotIn("msgstr[2]", c.pofile)
+
+    def test_superfluous_plural_forms_are_kept(self):
+        """A form the header does not ask for is still shown, not dropped."""
+        superuser = User.objects.create_superuser("admin@example.com", "admin")
+        su_client = Client()
+        su_client.force_login(superuser)
+
+        p = Project.objects.create(name="extra", slug="extra")
+        c = p.catalogs.create(
+            language_code="de",
+            domain="django",
+            pofile="""\
+msgid ""
+msgstr ""
+"Plural-Forms: nplurals=2; plural=(n != 1);\\n"
+
+msgid "One student"
+msgid_plural "Some students"
+msgstr[0] "Ein Studi"
+msgstr[1] "Studis"
+msgstr[2] "Ganz viele Studis"
+""",
+        )
+
+        r = su_client.get(c.get_absolute_url(), headers={"accept-language": "en"})
+        self.assertContains(r, 'name="msgstr_0:2"')
+        # The rule says nothing about this form, so there are no example counts
+        self.assertContains(r, "Plural form 2<")
+        self.assertContains(r, "Ganz viele Studis")
+
+    def test_sources_state_which_form_translates_them(self):
+        superuser = User.objects.create_superuser("admin@example.com", "admin")
+        su_client = Client()
+        su_client.force_login(superuser)
+
+        c = self.russian_catalog()
+
+        r = su_client.get(c.get_absolute_url(), headers={"accept-language": "en"})
+        self.assertContains(r, "<small>Singular (plural form 0):</small> One student")
+        self.assertContains(
+            r, "<small>Plural (plural forms 1, 2):</small> %(count)s students"
+        )
+
+        # Entries without plurals have a single unlabelled source
+        _p, fr = self.create_project_and_catalog()
+        r = su_client.get(fr.get_absolute_url(), headers={"accept-language": "en"})
+        self.assertContains(r, "Singular (plural form 0)")  # The plural entry
+        self.assertNotContains(r, "<small>Singular:</small>")
+
+    def test_source_rows(self):
+        po = polib.pofile(self.RUSSIAN_POFILE)
+        entry = po[0]
+
+        # Languages without a singular form: nothing translates the singular
+        japanese = source_rows(entry, "nplurals=1; plural=0;", [0])
+        self.assertEqual(japanese[0]["label"], "Singular")
+        self.assertEqual(japanese[1]["label"], "Plural (plural form 0)")
+
+        # ... and the other way round, nothing translates the plural
+        only_singular = source_rows(entry, "nplurals=2; plural=(n != 1);", [0])
+        self.assertEqual(only_singular[0]["label"], "Singular (plural form 0)")
+        self.assertEqual(only_singular[1]["label"], "Plural")
 
     def test_event_save(self):
         user = User.objects.create_superuser("admin@example.com", "admin")

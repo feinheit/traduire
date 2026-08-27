@@ -287,6 +287,26 @@ msgstr "Suggérer"
 
 #: projects/plurals.py
 #, python-brace-format
+msgid "Singular (plural form {index})"
+msgstr "Singulier (forme plurielle {index})"
+
+#: projects/plurals.py
+msgid "Singular"
+msgstr "Singulier"
+
+#: projects/plurals.py
+#, python-brace-format
+msgid "Plural (plural form {indexes})"
+msgid_plural "Plural (plural forms {indexes})"
+msgstr[0] "Pluriel (forme plurielle {indexes})"
+msgstr[1] "Pluriel (formes plurielles {indexes})"
+
+#: projects/plurals.py
+msgid "Plural"
+msgstr "Pluriel"
+
+#: projects/plurals.py
+#, python-brace-format
 msgid "{counts} and so on"
 msgstr "{counts} et ainsi de suite"
 

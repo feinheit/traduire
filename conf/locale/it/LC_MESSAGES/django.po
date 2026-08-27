@@ -286,6 +286,26 @@ msgstr ""
 
 #: projects/plurals.py
 #, python-brace-format
+msgid "Singular (plural form {index})"
+msgstr ""
+
+#: projects/plurals.py
+msgid "Singular"
+msgstr ""
+
+#: projects/plurals.py
+#, python-brace-format
+msgid "Plural (plural form {indexes})"
+msgid_plural "Plural (plural forms {indexes})"
+msgstr[0] ""
+msgstr[1] ""
+
+#: projects/plurals.py
+msgid "Plural"
+msgstr ""
+
+#: projects/plurals.py
+#, python-brace-format
 msgid "{counts} and so on"
 msgstr ""
 
