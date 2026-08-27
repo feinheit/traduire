@@ -7,7 +7,7 @@ from django.utils.html import format_html, format_html_join
 from django.utils.timezone import localtime
 from django.utils.translation import gettext_lazy as _, ngettext
 
-from projects import translators
+from projects import plurals, translators
 
 
 ENTRIES_PER_PAGE = 20
@@ -50,6 +50,7 @@ class EntriesForm(forms.Form):
     def __init__(self, *args, **kwargs):
         self.entries = kwargs.pop("entries")
         self.language_code = kwargs.pop("language_code")
+        self.plural_forms = kwargs.pop("plural_forms", None)
         super().__init__(*args, **kwargs)
 
         self.entry_rows = []
@@ -75,15 +76,24 @@ class EntriesForm(forms.Form):
             })
 
             if entry.msgid_plural:
+                # msgstr[n] is the n-th plural form of the target language, not
+                # the translation for n items -- label the fields with the
+                # counts the catalog's plural rule actually maps to each form.
+                labels = plurals.plural_form_labels(
+                    self.plural_forms, sorted(entry.msgstr_plural)
+                )
                 for count, msgstr in sorted(entry.msgstr_plural.items()):
                     name = f"msgstr_{index}:{count}"
                     self.fields[name] = forms.CharField(
-                        label=_("With {count} items").format(count=count),
+                        label=labels[count],
                         widget=forms.Textarea(attrs={"rows": 3}),
                         initial=msgstr,
                         required=False,
                         strip=False,
-                        help_text=_help_text(entry.msgid_plural, self.language_code),
+                        help_text=_help_text(
+                            plurals.source_for_form(entry, count, self.plural_forms),
+                            self.language_code,
+                        ),
                     )
                     self.entry_rows[-1]["msgstr"].append(self[name])
             else:
@@ -102,12 +112,15 @@ class EntriesForm(forms.Form):
         cleaned = super().clean()
         for index, entry in enumerate(self.entries):
             if entry.msgid_plural:
-                source = entry.msgid_plural
                 for count in entry.msgstr_plural:
                     field_name = f"msgstr_{index}:{count}"
                     value = cleaned.get(field_name, "")
                     if value:
-                        self._check_variables(source, value, field_name)
+                        self._check_variables(
+                            plurals.source_for_form(entry, count, self.plural_forms),
+                            value,
+                            field_name,
+                        )
             else:
                 field_name = f"msgstr_{index}"
                 value = cleaned.get(field_name, "")
@@ -127,6 +140,7 @@ class EntriesForm(forms.Form):
 
     def update(self, catalog, *, request):
         updates = 0
+        plural_forms = catalog.po.metadata.get("Plural-Forms")
 
         for index in range(ENTRIES_PER_PAGE):
             msgid_with_context = self.cleaned_data.get(f"msgid_{index}")
@@ -147,13 +161,14 @@ class EntriesForm(forms.Form):
             for entry in catalog.po:
                 if entry.msgid_with_context == msgid_with_context:
                     old = copy.deepcopy(entry)
-                    entry.msgstr = translators.fix_nls(entry.msgid, msgstr)
                     if entry.msgid_plural:
                         for count in entry.msgstr_plural:
                             entry.msgstr_plural[count] = translators.fix_nls(
-                                entry.msgid_plural,
+                                plurals.source_for_form(entry, count, plural_forms),
                                 self.cleaned_data.get(f"msgstr_{index}:{count}", ""),
                             )
+                    else:
+                        entry.msgstr = translators.fix_nls(entry.msgid, msgstr)
                     if fuzzy and not entry.fuzzy:
                         entry.fuzzy = True
                         updates += 1

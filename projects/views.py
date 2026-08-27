@@ -78,7 +78,12 @@ def catalog(request, project, language_code, domain):
 
     data = [request.POST] if request.method == "POST" else []
     entries = entries[:ENTRIES_PER_PAGE]
-    form = EntriesForm(*data, entries=entries, language_code=language_code)
+    form = EntriesForm(
+        *data,
+        entries=entries,
+        language_code=language_code,
+        plural_forms=catalog.po.metadata.get("Plural-Forms"),
+    )
 
     if form.is_valid():
         form.update(catalog, request=request)

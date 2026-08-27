@@ -285,10 +285,20 @@ msgstr "Recherche"
 msgid "Suggest"
 msgstr "Suggérer"
 
-#: projects/forms.py
+#: projects/plurals.py
 #, python-brace-format
-msgid "With {count} items"
-msgstr "Avec {count} éléments"
+msgid "{counts} and so on"
+msgstr "{counts} et ainsi de suite"
+
+#: projects/plurals.py
+#, python-brace-format
+msgid "Plural form {index} (n = {counts})"
+msgstr "Forme plurielle {index} (n = {counts})"
+
+#: projects/plurals.py
+#, python-brace-format
+msgid "Plural form {index}"
+msgstr "Forme plurielle {index}"
 
 #: projects/forms.py
 #, python-brace-format

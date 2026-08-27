@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, patch
 
+import polib
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.contrib.messages import get_messages
@@ -8,6 +9,13 @@ from django.test.utils import override_settings
 
 from accounts.models import User
 from projects.models import Catalog, Event, Project
+from projects.plurals import (
+    parse_plural_forms,
+    plural_form_index,
+    plural_form_labels,
+    singular_form_index,
+    source_for_form,
+)
 from projects.translators import (
     TranslationError,
     _protect_variables,
@@ -632,6 +640,160 @@ msgstr[1] "Blab %(count)s"
             headers={"accept-language": "en"},
         )
         self.assertRedirects(r, c.get_absolute_url() + "?start=0")
+
+    def test_plural_form_labels_follow_the_plural_rule(self):
+        """msgstr[n] is the n-th plural form, not the translation for n items."""
+        default = plural_form_labels(None, [0, 1])
+        self.assertEqual(default[0], "Plural form 0 (n = 1)")
+        self.assertEqual(default[1], "Plural form 1 (n = 0, 2, 3 and so on)")
+
+        # French puts 0 into the first form, unlike the gettext default
+        french = plural_form_labels("nplurals=2; plural=(n > 1);", [0, 1])
+        self.assertEqual(french[0], "Plural form 0 (n = 0, 1)")
+        self.assertEqual(french[1], "Plural form 1 (n = 2, 3, 4 and so on)")
+
+        russian = plural_form_labels(
+            "nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4"
+            " && (n%100<10 || n%100>=20) ? 1 : 2);",
+            [0, 1, 2],
+        )
+        self.assertEqual(russian[0], "Plural form 0 (n = 1, 21, 31 and so on)")
+        self.assertEqual(russian[1], "Plural form 1 (n = 2, 3, 4 and so on)")
+        self.assertEqual(russian[2], "Plural form 2 (n = 0, 5, 6 and so on)")
+
+    def test_plural_forms_header_is_not_executed(self):
+        """Catalogs are user-provided; unparsable rules must not be evaluated."""
+        header = "nplurals=2; plural=__import__('os').system('true');"
+        self.assertEqual(parse_plural_forms(header), (2, None))
+        self.assertIsNone(singular_form_index(header))
+        # Without a rule we cannot show example counts, but nothing breaks
+        self.assertEqual(
+            plural_form_labels(header, [0, 1]),
+            {0: "Plural form 0", 1: "Plural form 1"},
+        )
+
+    def test_singular_form_index(self):
+        self.assertEqual(singular_form_index(None), 0)
+        self.assertEqual(singular_form_index("nplurals=2; plural=(n > 1);"), 0)
+        # Arabic dedicates the first form to zero, the second one to one
+        self.assertEqual(
+            singular_form_index(
+                "nplurals=6; plural=(n==0 ? 0 : n==1 ? 1 : n==2 ? 2 :"
+                " n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5);"
+            ),
+            1,
+        )
+        # Languages without a singular at all
+        self.assertIsNone(singular_form_index("nplurals=1; plural=0;"))
+
+    def test_source_for_form(self):
+        po = polib.pofile("""\
+msgid "One student"
+msgid_plural "%(count)s students"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid "Continue"
+msgstr ""
+""")
+        plural, singular = po[0], po[1]
+        self.assertEqual(source_for_form(plural, 0, None), "One student")
+        self.assertEqual(source_for_form(plural, 1, None), "%(count)s students")
+        # Languages with a single form have to make do with the plural msgid
+        japanese = "nplurals=1; plural=0;"
+        self.assertEqual(source_for_form(plural, 0, japanese), "%(count)s students")
+        # Entries without plurals only ever have one source
+        self.assertEqual(source_for_form(singular, 0, None), "Continue")
+
+    def test_plural_form_index(self):
+        self.assertEqual(plural_form_index(None, 1), 0)
+        self.assertEqual(plural_form_index(None, 2), 1)
+        self.assertEqual(plural_form_index("nplurals=1; plural=0;", 42), 0)
+        # Rules which do not agree with nplurals are not to be trusted
+        self.assertIsNone(plural_form_index("nplurals=2; plural=(n>1 ? 5 : 0);", 3))
+        self.assertIsNone(plural_form_index("nplurals=2; plural=nonsense;", 1))
+
+    def test_plural_form_labels_are_rendered(self):
+        superuser = User.objects.create_superuser("admin@example.com", "admin")
+        su_client = Client()
+        su_client.force_login(superuser)
+
+        _p, c = self.create_project_and_catalog()
+
+        r = su_client.get(c.get_absolute_url(), headers={"accept-language": "en"})
+        self.assertContains(r, "Plural form 0 (n = 1)")
+        self.assertContains(r, "Plural form 1 (n = 0, 2, 3 and so on)")
+        self.assertNotContains(r, "With 0 items")
+
+    def test_plural_forms_are_suggested_from_their_own_msgid(self):
+        """The singular form belongs to msgid, the other forms to msgid_plural."""
+        superuser = User.objects.create_superuser("admin@example.com", "admin")
+        su_client = Client()
+        su_client.force_login(superuser)
+
+        _p, c = self.create_project_and_catalog()
+
+        with override_settings(DEEPL_AUTH_KEY="hello"):
+            r = su_client.get(c.get_absolute_url(), headers={"accept-language": "en"})
+
+        content = r.content.decode()
+        self.assertIn(
+            'data-suggest="Successfully reset the password of %(count)s student."',
+            content,
+        )
+        self.assertIn(
+            'data-suggest="Successfully reset passwords of %(count)s students."',
+            content,
+        )
+
+    def test_singular_form_is_validated_against_the_singular_msgid(self):
+        superuser = User.objects.create_superuser("admin@example.com", "admin")
+        su_client = Client()
+        su_client.force_login(superuser)
+
+        p = Project.objects.create(name="pl", slug="pl")
+        c = p.catalogs.create(
+            language_code="de",
+            domain="django",
+            pofile="""\
+#, python-format
+msgid "One student"
+msgid_plural "%(count)s students"
+msgstr[0] ""
+msgstr[1] ""
+""",
+        )
+
+        # The singular has no variable, so its translation must not need one.
+        # The plural form does, and dropping it has to be an error.
+        r = su_client.post(
+            c.get_absolute_url(),
+            {
+                "msgid_0": "One student",
+                "msgstr_0:0": "Ein Studi",
+                "msgstr_0:1": "Studis",
+            },
+            headers={"accept-language": "en"},
+        )
+        self.assertEqual(r.status_code, 200)
+        # Only the plural form is flagged, not the singular one
+        self.assertContains(r, "Missing variables: %(count)s")
+        self.assertContains(r, 'id="id_msgstr_0:1_error"')
+        self.assertNotContains(r, 'id="id_msgstr_0:0_error"')
+
+        r = su_client.post(
+            c.get_absolute_url(),
+            {
+                "msgid_0": "One student",
+                "msgstr_0:0": "Ein Studi",
+                "msgstr_0:1": "%(count)s Studis",
+            },
+            headers={"accept-language": "en"},
+        )
+        self.assertRedirects(r, c.get_absolute_url() + "?start=0")
+        c.refresh_from_db()
+        self.assertIn('msgstr[0] "Ein Studi"', c.pofile)
+        self.assertIn('msgstr[1] "%(count)s Studis"', c.pofile)
 
     def test_event_save(self):
         user = User.objects.create_superuser("admin@example.com", "admin")
